@@ -1,0 +1,39 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/deposit?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+  data:
+    redis:
+      repositories:
+        enabled: false
+  jackson:
+    serialization:
+      WRITE_DATES_AS_TIMESTAMPS: false
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+rocketmq:
+  name-server: localhost:9876
+  producer:
+    group: deposit-producer
+
+deposit:
+  jwt:
+    secret: this-is-a-demo-secret-key-for-deposit
+    ttl: 7200000
+    issuer: sanxiang-bank
+  signature:
+    enabled: false
+    public-key: |
+      -----BEGIN PUBLIC KEY-----
+      MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBANuXZn3o3M1Pdh9vywgq6Z9YuqbWtaXD
+      je1ZxxEe7dBDEuDfSU/EYEYTbSsfXCMV2JAnCmvYzu3/n6PvJEa3TB8CAwEAAQ==
+      -----END PUBLIC KEY-----
+server:
+  port: 8080
