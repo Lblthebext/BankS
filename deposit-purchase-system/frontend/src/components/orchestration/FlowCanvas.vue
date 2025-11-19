@@ -53,6 +53,7 @@ import '@vue-flow/core/dist/style.css';
 import { Message } from '@arco-design/web-vue';
 import { listFlows, saveFlow, publishFlow } from '../../api/orchestration';
 import { ensureToken } from '../../utils/token';
+import { unwrapResponseData } from '../../utils/response';
 
 const atomicServices = [
   { id: 'S1', name: '证件审查接口' },
@@ -102,10 +103,12 @@ async function bootstrapFlows() {
   try {
     await ensureToken();
     const res = await listFlows();
-    flowList.value = res.data || [];
+    flowList.value = unwrapResponseData(res, []);
     if (flowList.value.length > 0) {
       selectedFlowCode.value = flowList.value[0].flowCode;
       await loadFlow(selectedFlowCode.value);
+    } else {
+      resetCanvas();
     }
   } catch (error) {
     console.error('加载流程失败', error);
@@ -140,17 +143,51 @@ function hydrateSelection(nodeId) {
 
 async function loadFlow(code) {
   const flow = flowList.value.find(f => f.flowCode === code);
-  if (!flow) return;
+  if (!flow) {
+    selectedFlow.value = null;
+    resetCanvas();
+    return;
+  }
   selectedFlow.value = flow;
-  const def = typeof flow.dagJson === 'string' ? JSON.parse(flow.dagJson) : flow.dagJson;
-  const nodeDefs = def.nodes || [];
+  const definition = parseDagDefinition(flow.dagJson);
+  const nodeDefs = Array.isArray(definition.nodes) ? definition.nodes : [];
   nodes.value = nodeDefs.map((node, index) => ({
     id: node.id,
     position: { x: 60 + index * 160, y: 100 },
-    data: reactive({ async: node.async }),
+    data: reactive({ async: !!node.async }),
     label: node.id,
     draggable: true
   }));
+  rebuildEdges(nodeDefs);
+  if (nodes.value.length > 0) {
+    selectedNode.value = nodes.value[0];
+    hydrateSelection(selectedNode.value.id);
+  } else {
+    resetSelection();
+  }
+}
+
+function parseDagDefinition(raw) {
+  if (!raw) {
+    return { nodes: [] };
+  }
+  if (typeof raw === 'object') {
+    return raw;
+  }
+  try {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return { nodes: [] };
+    }
+    return JSON.parse(trimmed);
+  } catch (error) {
+    console.error('解析流程失败', error);
+    Message.warning('流程定义数据异常，已展示空画布');
+    return { nodes: [] };
+  }
+}
+
+function rebuildEdges(nodeDefs) {
   edges.value = [];
   nodeDefs.forEach(node => {
     if (node.nextOnSuccess && !node.nextOnSuccess.startsWith('END')) {
@@ -160,12 +197,18 @@ async function loadFlow(code) {
       edges.value.push({ id: `${node.id}-failure`, source: node.id, target: node.nextOnFailure, label: '失败' });
     }
   });
-  if (nodes.value.length > 0) {
-    selectedNode.value = nodes.value[0];
-    hydrateSelection(selectedNode.value.id);
-  } else {
-    selectedNode.value = null;
-  }
+}
+
+function resetCanvas() {
+  nodes.value = [];
+  edges.value = [];
+  resetSelection();
+}
+
+function resetSelection() {
+  selectedNode.value = null;
+  selectedNodeSuccess.value = 'END_SUCCESS';
+  selectedNodeFailure.value = 'END_FAIL';
 }
 
 function updateEdge(source, target, label) {
@@ -198,9 +241,10 @@ async function handleSave() {
   };
   const payload = { ...selectedFlow.value, dagJson: JSON.stringify(definition) };
   try {
+    await ensureToken();
     const res = await saveFlow(payload);
-    selectedFlow.value = res.data;
-    await refreshFlows();
+    selectedFlow.value = unwrapResponseData(res, selectedFlow.value);
+    await refreshFlows(selectedFlow.value?.flowCode);
     Message.success('流程已保存');
   } catch (error) {
     console.error('保存流程失败', error);
@@ -208,14 +252,25 @@ async function handleSave() {
   }
 }
 
-async function refreshFlows() {
+async function refreshFlows(targetCode = selectedFlowCode.value) {
+  await ensureToken();
   const res = await listFlows();
-  flowList.value = res.data || [];
+  flowList.value = unwrapResponseData(res, []);
+  if (flowList.value.length === 0) {
+    selectedFlowCode.value = '';
+    selectedFlow.value = null;
+    resetCanvas();
+    return;
+  }
+  const nextCode = flowList.value.find(flow => flow.flowCode === targetCode)?.flowCode || flowList.value[0].flowCode;
+  selectedFlowCode.value = nextCode;
+  await loadFlow(nextCode);
 }
 
 async function handlePublish() {
   if (!selectedFlow.value) return;
   try {
+    await ensureToken();
     await publishFlow(selectedFlow.value.id);
     Message.success('流程已发布');
   } catch (error) {

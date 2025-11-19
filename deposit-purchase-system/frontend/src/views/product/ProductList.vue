@@ -16,16 +16,17 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import { useProductStore } from '../../store/product';
 import { ensureToken } from '../../utils/token';
+import { storeToRefs } from 'pinia';
 
 const router = useRouter();
 const store = useProductStore();
 const loading = ref(false);
-const products = computed(() => store.products);
+const { products } = storeToRefs(store);
 
 onMounted(async () => {
   loading.value = true;
