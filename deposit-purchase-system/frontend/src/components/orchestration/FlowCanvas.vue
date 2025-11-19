@@ -20,9 +20,7 @@
           </a-list>
         </div>
         <div class="canvas">
-          <VueFlow v-model:nodes="nodes" v-model:edges="edges" class="flow-canvas" :fit-view="true">
-            <Background />
-          </VueFlow>
+          <VueFlow v-model:nodes="nodes" v-model:edges="edges" class="flow-canvas" :fit-view="true" />
         </div>
         <div class="inspector" v-if="selectedNode">
           <h4>节点配置：{{ selectedNode.id }}</h4>
@@ -48,7 +46,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue';
-import { VueFlow, Background, useVueFlow } from '@vue-flow/core';
+import { VueFlow, useVueFlow } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
 import { listFlows, saveFlow, publishFlow } from '../../api/orchestration';
 
@@ -224,6 +222,9 @@ async function handlePublish() {
 .flow-canvas {
   width: 100%;
   height: 100%;
+  background-image: linear-gradient(90deg, rgba(99, 114, 130, 0.08) 1px, transparent 0),
+    linear-gradient(180deg, rgba(99, 114, 130, 0.08) 1px, transparent 0);
+  background-size: 20px 20px;
 }
 .inspector {
   width: 220px;
