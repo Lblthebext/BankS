@@ -1,7 +1,7 @@
 <template>
   <div>
     <a-card title="存款产品列表" :loading="loading">
-      <a-table :data="products" row-key="id">
+      <a-table :data="products" row-key="id" :pagination="false">
         <a-table-column title="产品名称" data-index="productName"></a-table-column>
         <a-table-column title="利率" data-index="interestRate"></a-table-column>
         <a-table-column title="风险等级" data-index="riskLevel"></a-table-column>
@@ -18,8 +18,9 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { Message } from '@arco-design/web-vue';
 import { useProductStore } from '../../store/product';
-import { fetchToken } from '../../api/auth';
+import { ensureToken } from '../../utils/token';
 
 const router = useRouter();
 const store = useProductStore();
@@ -28,17 +29,16 @@ const products = computed(() => store.products);
 
 onMounted(async () => {
   loading.value = true;
-  await ensureToken();
-  await store.fetchProducts();
-  loading.value = false;
-});
-
-async function ensureToken() {
-  if (!localStorage.getItem('deposit-token')) {
-    const res = await fetchToken();
-    localStorage.setItem('deposit-token', res.data.token);
+  try {
+    await ensureToken();
+    await store.fetchProducts();
+  } catch (error) {
+    console.error('加载产品失败', error);
+    Message.error(error?.response?.data?.message || '加载产品失败');
+  } finally {
+    loading.value = false;
   }
-}
+});
 
 function viewDetail(record) {
   router.push({ name: 'product-detail', params: { id: record.id } });

@@ -50,7 +50,9 @@
 import { ref, reactive, onMounted, watch } from 'vue';
 import { VueFlow, Background, useVueFlow } from '@vue-flow/core';
 import '@vue-flow/core/dist/style.css';
+import { Message } from '@arco-design/web-vue';
 import { listFlows, saveFlow, publishFlow } from '../../api/orchestration';
+import { ensureToken } from '../../utils/token';
 
 const atomicServices = [
   { id: 'S1', name: '证件审查接口' },
@@ -92,14 +94,24 @@ watch(selectedNodeFailure, value => {
   updateEdge(selectedNode.value.id, value, '失败');
 });
 
-onMounted(async () => {
-  const res = await listFlows();
-  flowList.value = res.data;
-  if (flowList.value.length > 0) {
-    selectedFlowCode.value = flowList.value[0].flowCode;
-    await loadFlow(selectedFlowCode.value);
-  }
+onMounted(() => {
+  bootstrapFlows();
 });
+
+async function bootstrapFlows() {
+  try {
+    await ensureToken();
+    const res = await listFlows();
+    flowList.value = res.data || [];
+    if (flowList.value.length > 0) {
+      selectedFlowCode.value = flowList.value[0].flowCode;
+      await loadFlow(selectedFlowCode.value);
+    }
+  } catch (error) {
+    console.error('加载流程失败', error);
+    Message.error(error?.response?.data?.message || '加载流程失败');
+  }
+}
 
 function addServiceNode(service) {
   if (nodes.value.find(n => n.id === service.id)) {
@@ -185,19 +197,31 @@ async function handleSave() {
     })
   };
   const payload = { ...selectedFlow.value, dagJson: JSON.stringify(definition) };
-  const res = await saveFlow(payload);
-  selectedFlow.value = res.data;
-  await refreshFlows();
+  try {
+    const res = await saveFlow(payload);
+    selectedFlow.value = res.data;
+    await refreshFlows();
+    Message.success('流程已保存');
+  } catch (error) {
+    console.error('保存流程失败', error);
+    Message.error(error?.response?.data?.message || '保存流程失败');
+  }
 }
 
 async function refreshFlows() {
   const res = await listFlows();
-  flowList.value = res.data;
+  flowList.value = res.data || [];
 }
 
 async function handlePublish() {
   if (!selectedFlow.value) return;
-  await publishFlow(selectedFlow.value.id);
+  try {
+    await publishFlow(selectedFlow.value.id);
+    Message.success('流程已发布');
+  } catch (error) {
+    console.error('发布流程失败', error);
+    Message.error(error?.response?.data?.message || '发布流程失败');
+  }
 }
 </script>
 
