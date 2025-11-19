@@ -31,6 +31,10 @@ public class SecurityInterceptor implements HandlerInterceptor {
         if (HttpMethod.OPTIONS.matches(request.getMethod())) {
             return true;
         }
+        String path = request.getRequestURI();
+        if (isPublicPath(path)) {
+            return true;
+        }
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             unauthorized(response, "Missing token");
@@ -57,6 +61,16 @@ public class SecurityInterceptor implements HandlerInterceptor {
         }
         request.setAttribute(ATTRIBUTE_CLAIMS, claims);
         return true;
+    }
+
+    private boolean isPublicPath(String path) {
+        if (path == null) {
+            return false;
+        }
+        return "/products".equals(path)
+                || path.startsWith("/products/")
+                || "/api/products".equals(path)
+                || path.startsWith("/api/products/");
     }
 
     private void unauthorized(HttpServletResponse response, String message) throws IOException {
