@@ -4,7 +4,7 @@
       <div class="logo">三湘银行存款产品购买平台</div>
     </a-layout-header>
     <a-layout>
-      <a-layout-sider width="240">
+      <a-layout-sider :width="240">
         <a-menu mode="vertical" :selected-keys="[selectedKey]" @menu-item-click="onMenuClick">
           <a-menu-item key="products">产品列表</a-menu-item>
           <a-menu-item key="orchestration">服务编排</a-menu-item>
